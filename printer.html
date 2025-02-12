@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animovaná Tiskárna</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: #f0f0f0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        .printer-container {
+            position: relative;
+            width: 400px;
+            height: 200px;
+        }
+
+        .printer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #333, #444);
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        .printer-slot {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 2px;
+            background: #222;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .paper {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 75%;
+            height: 0;
+            background: white;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+            transition: height 1s ease-out;
+            bottom: 42px;
+            border-radius: 3px 3px 0 0;
+        }
+
+        .printer-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #32cd32;
+            box-shadow: 0 0 10px #32cd32;
+        }
+
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .button {
+            padding: 8px 15px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .button:hover {
+            background: #1976D2;
+        }
+
+        .printed-papers {
+            position: absolute;
+            bottom: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .printed-paper {
+            width: 300px;
+            height: 80px;
+            background: white;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+            border-radius: 3px;
+            transition: transform 0.5s;
+        }
+
+        .printed-paper:hover {
+            transform: scale(1.05);
+        }
+
+        .printer-text {
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+            padding: 10px;
+            opacity: 0.7;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .printing .printer-status {
+            background: #ff4444;
+            animation: blink 1s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="printer-container">
+        <div class="printer">
+            <div class="printer-status"></div>
+            <div class="control-panel">
+                <button class="button" id="print-btn">Tisknout</button>
+                <button class="button" id="clear-btn">Vyčistit</button>
+            </div>
+            <div class="printer-slot"></div>
+            <div class="paper" id="current-paper"></div>
+        </div>
+        <div class="printed-papers" id="printed-papers"></div>
+    </div>
+
+    <script>
+        const printer = document.querySelector('.printer');
+        const currentPaper = document.getElementById('current-paper');
+        const printedPapers = document.getElementById('printed-papers');
+        const printBtn = document.getElementById('print-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        let isPrinting = false;
+        let paperCount = 0;
+
+        function printPaper() {
+            if (isPrinting) return;
+            isPrinting = true;
+            printer.classList.add('printing');
+
+            // Animace vysouvání papíru
+            currentPaper.style.height = '100px';
+
+            setTimeout(() => {
+                // Vytvoření vytištěného papíru
+                const printedPaper = document.createElement('div');
+                printedPaper.className = 'printed-paper';
+                
+                // Přidání textu na papír
+                const paperText = document.createElement('div');
+                paperText.className = 'printer-text';
+                paperText.textContent = `Dokument #${++paperCount}`;
+                printedPaper.appendChild(paperText);
+
+                // Přidání papíru do stacku
+                printedPapers.insertBefore(printedPaper, printedPapers.firstChild);
+
+                // Reset současného papíru
+                currentPaper.style.height = '0';
+
+                // Omezení počtu papírů
+                if (printedPapers.children.length > 5) {
+                    printedPapers.removeChild(printedPapers.lastChild);
+                }
+
+                printer.classList.remove('printing');
+                isPrinting = false;
+            }, 1000);
+        }
+
+        function clearPapers() {
+            while (printedPapers.firstChild) {
+                printedPapers.removeChild(printedPapers.firstChild);
+            }
+            paperCount = 0;
+        }
+
+        printBtn.addEventListener('click', printPaper);
+        clearBtn.addEventListener('click', clearPapers);
+
+        // Přidání zvukového efektu tisku (volitelné)
+        const printSound = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU');
+        printBtn.addEventListener('click', () => {
+            printSound.currentTime = 0;
+            printSound.play().catch(() => {}); // Ignorovat chyby přehrávání
+        });
+    </script>
+</body>
+</html>
