@@ -72,6 +72,7 @@
             left: 20px;
             display: flex;
             gap: 10px;
+            flex-direction: column;
         }
 
         .button {
@@ -88,36 +89,67 @@
             background: #1976D2;
         }
 
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
         .printed-papers {
             position: absolute;
-            bottom: -200px;
-            left: 50%;
-            transform: translateX(-50%);
+            bottom: 20px;
+            left: calc(100% + 20px);
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2px;
+            flex-direction: row-reverse;
+            align-items: flex-end;
+            gap: 5px;
+            max-width: 600px;
+            flex-wrap: wrap-reverse;
+            padding: 10px;
         }
 
         .printed-paper {
             width: 300px;
-            height: 80px;
+            min-height: 80px;
             background: white;
             box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
             border-radius: 3px;
             transition: transform 0.5s;
+            transform-origin: bottom left;
+            position: relative;
         }
 
         .printed-paper:hover {
             transform: scale(1.05);
+            z-index: 10;
         }
 
         .printer-text {
             font-size: 14px;
             color: #666;
-            text-align: center;
             padding: 10px;
-            opacity: 0.7;
+            word-wrap: break-word;
+        }
+
+        .text-input {
+            width: 200px;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .printer-error {
+            color: red;
+            font-size: 12px;
+            margin-top: 5px;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .printer.jammed .printer-status {
+            background: #ff4444;
+            animation: blink 1s infinite;
         }
 
         @keyframes blink {
@@ -126,8 +158,16 @@
         }
 
         .printing .printer-status {
-            background: #ff4444;
+            background: #ff8c00;
             animation: blink 1s infinite;
+        }
+
+        .timestamp {
+            font-size: 10px;
+            color: #999;
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
         }
     </style>
 </head>
@@ -136,8 +176,10 @@
         <div class="printer">
             <div class="printer-status"></div>
             <div class="control-panel">
+                <input type="text" class="text-input" id="text-input" placeholder="Zadejte text k tisku...">
                 <button class="button" id="print-btn">Tisknout</button>
                 <button class="button" id="clear-btn">Vyčistit</button>
+                <div class="printer-error" id="printer-error">Tiskárna je zahlcena papíry!</div>
             </div>
             <div class="printer-slot"></div>
             <div class="paper" id="current-paper"></div>
@@ -151,13 +193,30 @@
         const printedPapers = document.getElementById('printed-papers');
         const printBtn = document.getElementById('print-btn');
         const clearBtn = document.getElementById('clear-btn');
+        const textInput = document.getElementById('text-input');
+        const printerError = document.getElementById('printer-error');
         let isPrinting = false;
         let paperCount = 0;
+        const MAX_PAPERS = 12;
+
+        function getCurrentTimestamp() {
+            const now = new Date();
+            return now.toISOString().replace('T', ' ').substring(0, 19);
+        }
 
         function printPaper() {
-            if (isPrinting) return;
+            const text = textInput.value.trim();
+            if (isPrinting || !text) return;
+            
+            if (printedPapers.children.length >= MAX_PAPERS) {
+                printer.classList.add('jammed');
+                printerError.style.opacity = '1';
+                return;
+            }
+
             isPrinting = true;
             printer.classList.add('printing');
+            printerError.style.opacity = '0';
 
             // Animace vysouvání papíru
             currentPaper.style.height = '100px';
@@ -170,22 +229,31 @@
                 // Přidání textu na papír
                 const paperText = document.createElement('div');
                 paperText.className = 'printer-text';
-                paperText.textContent = `Dokument #${++paperCount}`;
+                paperText.textContent = text;
                 printedPaper.appendChild(paperText);
+
+                // Přidání časového razítka
+                const timestamp = document.createElement('div');
+                timestamp.className = 'timestamp';
+                timestamp.textContent = getCurrentTimestamp();
+                printedPaper.appendChild(timestamp);
 
                 // Přidání papíru do stacku
                 printedPapers.insertBefore(printedPaper, printedPapers.firstChild);
 
                 // Reset současného papíru
                 currentPaper.style.height = '0';
-
-                // Omezení počtu papírů
-                if (printedPapers.children.length > 5) {
-                    printedPapers.removeChild(printedPapers.lastChild);
-                }
+                textInput.value = '';
 
                 printer.classList.remove('printing');
                 isPrinting = false;
+                paperCount++;
+
+                // Kontrola zahlcení
+                if (printedPapers.children.length >= MAX_PAPERS) {
+                    printer.classList.add('jammed');
+                    printerError.style.opacity = '1';
+                }
             }, 1000);
         }
 
@@ -194,16 +262,16 @@
                 printedPapers.removeChild(printedPapers.firstChild);
             }
             paperCount = 0;
+            printer.classList.remove('jammed');
+            printerError.style.opacity = '0';
         }
 
         printBtn.addEventListener('click', printPaper);
         clearBtn.addEventListener('click', clearPapers);
-
-        // Přidání zvukového efektu tisku (volitelné)
-        const printSound = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU');
-        printBtn.addEventListener('click', () => {
-            printSound.currentTime = 0;
-            printSound.play().catch(() => {}); // Ignorovat chyby přehrávání
+        textInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                printPaper();
+            }
         });
     </script>
 </body>
